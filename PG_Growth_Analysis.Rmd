@@ -1,24 +1,37 @@
-## ADB August 17, 2017
-## Purpose of script: analyze growth of harp seals
-##                    - seasonal growth
-##                    - decadal changes in growth, acconting for seasonality
+---
+title: "Harp seal Growth"
+author: "Alejandro Buren"
+date: "August 18, 2017"
+output: html_document
+---
 
-## Data: 
-##    Morph data from qsel_growth in mm_db_queries.accdb
-##    Age data from qsel_age in mm_db_queries.accdb
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Purpose
+This is an analysis of harp seal growth 
 
+* The purpose is to carry out 2 analyses 
+    + seasonal growth, accounting for age and sex
+    + decadal changes in growth, acconting for seasonality    
+    
+## Data
+* The data was obtained from the Marine Mammals Database  
+    + Morph data from qsel_growth in mm_db_queries.accdb
+    + Age data from qsel_age in mm_db_queries.accdb 
 
+```{r echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 ## load libraries ----
 library(ggplot2)
 library(lubridate)
 
 ## read data ----
 setwd('D:/Buren_files/GitHub/PG_Growth/')
-age <- read.csv('data/PG_age.csv', header = T, as.is=T)
-growth <- read.csv('data/PG_growth.csv', header = T, as.is=T)
+age <- read.csv('data/PG_age.csv', header = T, as.is = T)
+growth <- read.csv('data/PG_growth.csv', header = T, as.is = T)
 
 ## merge data sets ----
-data <- merge(growth, age[,c('idsex', 'cohortage')], by='idsex', all.x=T)
+data <- merge(growth, age[,c('idsex', 'cohortage')], by='idsex', all.x = T)
 
 ## wrangle data set ----
 # Create dates
@@ -39,14 +52,18 @@ for (i in 1:nrow(data)){
 eliminate <- c(0, 91:93)
 data <- data[which(!data$cohortage %in% eliminate),]
 data <- subset(data, sex != 'U')
+rm(eliminate)
 subset(data, cohortage == 99)
 
 # create age classes
 data$ageclass <- ifelse(data$cohortage > 7, '8+', data$cohortage)
+
+
 # find outliers in weight by age class
 g <- ggplot(data, aes(ageclass, weight))
 g + geom_violin() 
 print(g)
+g
 
 age1 <- subset(data, cohortage == 1)
 age1[which(age1$weight > 50),]   
@@ -72,3 +89,5 @@ p2 <- p2 + theme_bw()
 p2 <- p2 + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p2 <- p2 + xlab("Date")
 print(p2)
+
+```
