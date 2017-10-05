@@ -2,7 +2,8 @@
 title: "Harp seal Growth"
 author: "Alejandro Buren"
 date: "August 18, 2017"
-output: html_document
+output:
+  html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -17,77 +18,25 @@ This is an analysis of harp seal growth
     
 ## Data
 * The data was obtained from the Marine Mammals Database  
-    + Morph data from qsel_growth in mm_db_queries.accdb
-    + Age data from qsel_age in mm_db_queries.accdb 
+    + Morph data from qsel_growth in mm_db_queries.accdb  
+    + Age data from qsel_age in mm_db_queries.accdb   
+    
+    
+## SQL Code to obtain data
 
-```{r echo=FALSE, results='hide', warning=FALSE, message=FALSE}
-## load libraries ----
-library(ggplot2)
-library(lubridate)
-
-## read data ----
-setwd('D:/Buren_files/GitHub/PG_Growth/')
-age <- read.csv('data/PG_age.csv', header = T, as.is = T)
-growth <- read.csv('data/PG_growth.csv', header = T, as.is = T)
-
-## merge data sets ----
-data <- merge(growth, age[,c('idsex', 'cohortage')], by='idsex', all.x = T)
-
-## wrangle data set ----
-# Create dates
-data$dayf <- ifelse(is.na(data$day), 1, data$day)
-data$dates <- ymd(paste(data$year,"-",data$month,"-",data$dayf,sep = ""))
-data$mdates <- ymd(paste('2800',"-",data$month,"-",data$dayf,sep = ""))
-for (i in 1:nrow(data)){
-  if(!is.na(data[i,'dates'])){
-     if(data$month[i] > 7){
-       data$mdates[i] <- data$mdates[i] - years(1)
-     }
-  }
-}
-
-# Eliminate foetus, stillborns and starvlings, and YOY
-# There is one seal of unknown sex, also eliminate it
-# age = 99 does not include any individual in the previous categories
-eliminate <- c(0, 91:93)
-data <- data[which(!data$cohortage %in% eliminate),]
-data <- subset(data, sex != 'U')
-rm(eliminate)
-subset(data, cohortage == 99)
-
-# create age classes
-data$ageclass <- ifelse(data$cohortage > 7, '8+', data$cohortage)
+    + qsel_growth:
+    
+  SELECT tlkp_MarineMammalSp.[Code MM sp], tbl_MarineMammal.[ID Sex], tbl_MarineMammal.Sex, tbl_Collection.[Subunit Area], [tlkp_NAFO Div].Area, [tlkp_NAFO Div].Group, tbl_Collection.Year, tbl_Collection.Month, tbl_Collection.Day, tbl_Morphometrics.[Body Weight], tbl_Morphometrics.[Body Length], tbl_Morphometrics.[KnownPupAge(days)], tbl_Morphometrics.[Code PelageType], tbl_Morphometrics.[Code PelageType Pup], tbl_Morphometrics.[Sternum Blubber depth], tbl_Morphometrics.[Maximum Girth]
+FROM [tlkp_NAFO Div] INNER JOIN (tlkp_MarineMammalSp INNER JOIN ((tbl_MarineMammal INNER JOIN (tbl_MarineMammal_Event INNER JOIN tbl_Collection ON tbl_MarineMammal_Event.[Id MMEvent] = tbl_Collection.[Id MMEvent]) ON tbl_MarineMammal.[Id MarineMammal] = tbl_MarineMammal_Event.[Id MarineMammal]) INNER JOIN tbl_Morphometrics ON tbl_MarineMammal_Event.[Id MMEvent] = tbl_Morphometrics.[Id MMEvent]) ON tlkp_MarineMammalSp.[MM ITIS TSN] = tbl_MarineMammal.[MM ITIS TSN]) ON [tlkp_NAFO Div].[Subunit Area] = tbl_Collection.[Subunit Area]
+WHERE (((tlkp_MarineMammalSp.[Code MM sp])="1"));
 
 
-# find outliers in weight by age class
-g <- ggplot(data, aes(ageclass, weight))
-g + geom_violin() 
-print(g)
-g
-
-age1 <- subset(data, cohortage == 1)
-age1[which(age1$weight > 50),]   
-
-## There is an issue with cohort age! transform to real ages ----
-
-## plots ----
-p <- ggplot(data , aes(as.POSIXct(mdates), weight, colour = sex)) 
-p <- p + geom_point()
-p <- p + scale_x_datetime(date_breaks = "1 months") 
-p <- p + theme_bw()
-p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-p <- p + xlab("Date")
-p <- p + facet_wrap(~ageclass, ncol = 1, scales = "free_y")
-print(p)
-
-
-
-p2 <- ggplot(data , aes(as.POSIXct(dates), weight, colour = sex)) 
-p2 <- p2 + geom_point()
-p2 <- p2 + scale_x_datetime(date_breaks="1 months") 
-p2 <- p2 + theme_bw()
-p2 <- p2 + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-p2 <- p2 + xlab("Date")
-print(p2)
-
-```
++ qsel_age:    
+    
+    
+    
+    SELECT tlkp_MarineMammalSp.[Code MM sp], tbl_MarineMammal.[ID Sex], tbl_MarineMammal.Sex, tbl_FinalAge.[Final Cohort Age]
+FROM (tlkp_MarineMammalSp INNER JOIN tbl_MarineMammal ON tlkp_MarineMammalSp.[MM ITIS TSN] = tbl_MarineMammal.[MM ITIS TSN]) INNER JOIN (tbl_MarineMammal_Event INNER JOIN tbl_FinalAge ON tbl_MarineMammal_Event.[Id MMEvent] = tbl_FinalAge.[Id MMEvent]) ON tbl_MarineMammal.[Id MarineMammal] = tbl_MarineMammal_Event.[Id MarineMammal]
+GROUP BY tlkp_MarineMammalSp.[Code MM sp], tbl_MarineMammal.[ID Sex], tbl_MarineMammal.Sex, tbl_FinalAge.[Final Cohort Age], tlkp_MarineMammalSp.[MM sp], tbl_FinalAge.[Id FinalAge]
+HAVING (((tlkp_MarineMammalSp.[Code MM sp])="1") AND ((tbl_FinalAge.[Final Cohort Age]) Is Not Null))
+ORDER BY tlkp_MarineMammalSp.[Code MM sp], tbl_MarineMammal.[ID Sex], tbl_FinalAge.[Id FinalAge];

@@ -140,9 +140,19 @@ $(document).ready(function () {
 <ul>
 <li>The data was obtained from the Marine Mammals Database
 <ul>
-<li>Morph data from qsel_growth in mm_db_queries.accdb</li>
+<li>Morph data from qsel_growth in mm_db_queries.accdb<br />
+</li>
 <li>Age data from qsel_age in mm_db_queries.accdb</li>
 </ul></li>
+</ul>
+</div>
+<div id="sql-code-to-obtain-data" class="section level2">
+<h2>SQL Code to obtain data</h2>
+<pre><code>+ qsel_growth:</code></pre>
+<p>SELECT tlkp_MarineMammalSp.[Code MM sp], tbl_MarineMammal.[ID Sex], tbl_MarineMammal.Sex, tbl_Collection.[Subunit Area], [tlkp_NAFO Div].Area, [tlkp_NAFO Div].Group, tbl_Collection.Year, tbl_Collection.Month, tbl_Collection.Day, tbl_Morphometrics.[Body Weight], tbl_Morphometrics.[Body Length], tbl_Morphometrics.[KnownPupAge(days)], tbl_Morphometrics.[Code PelageType], tbl_Morphometrics.[Code PelageType Pup], tbl_Morphometrics.[Sternum Blubber depth], tbl_Morphometrics.[Maximum Girth] FROM [tlkp_NAFO Div] INNER JOIN (tlkp_MarineMammalSp INNER JOIN ((tbl_MarineMammal INNER JOIN (tbl_MarineMammal_Event INNER JOIN tbl_Collection ON tbl_MarineMammal_Event.[Id MMEvent] = tbl_Collection.[Id MMEvent]) ON tbl_MarineMammal.[Id MarineMammal] = tbl_MarineMammal_Event.[Id MarineMammal]) INNER JOIN tbl_Morphometrics ON tbl_MarineMammal_Event.[Id MMEvent] = tbl_Morphometrics.[Id MMEvent]) ON tlkp_MarineMammalSp.[MM ITIS TSN] = tbl_MarineMammal.[MM ITIS TSN]) ON [tlkp_NAFO Div].[Subunit Area] = tbl_Collection.[Subunit Area] WHERE (((tlkp_MarineMammalSp.[Code MM sp])=“1”));</p>
+<ul>
+<li><p>qsel_age:</p>
+<p>SELECT tlkp_MarineMammalSp.[Code MM sp], tbl_MarineMammal.[ID Sex], tbl_MarineMammal.Sex, tbl_FinalAge.[Final Cohort Age] FROM (tlkp_MarineMammalSp INNER JOIN tbl_MarineMammal ON tlkp_MarineMammalSp.[MM ITIS TSN] = tbl_MarineMammal.[MM ITIS TSN]) INNER JOIN (tbl_MarineMammal_Event INNER JOIN tbl_FinalAge ON tbl_MarineMammal_Event.[Id MMEvent] = tbl_FinalAge.[Id MMEvent]) ON tbl_MarineMammal.[Id MarineMammal] = tbl_MarineMammal_Event.[Id MarineMammal] GROUP BY tlkp_MarineMammalSp.[Code MM sp], tbl_MarineMammal.[ID Sex], tbl_MarineMammal.Sex, tbl_FinalAge.[Final Cohort Age], tlkp_MarineMammalSp.[MM sp], tbl_FinalAge.[Id FinalAge] HAVING (((tlkp_MarineMammalSp.[Code MM sp])=“1”) AND ((tbl_FinalAge.[Final Cohort Age]) Is Not Null)) ORDER BY tlkp_MarineMammalSp.[Code MM sp], tbl_MarineMammal.[ID Sex], tbl_FinalAge.[Id FinalAge];</p></li>
 </ul>
 </div>
 
