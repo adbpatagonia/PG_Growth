@@ -21,6 +21,7 @@ gamdataad <- gamdata[which(gamdata$ageclass %in% ad),]
 
 
 gamdata$stage <- ifelse(gamdata$trueage < 5, 'J','A')
+gamdata$stage <- ifelse(gamdata$trueage == 0, 'YOY', gamdata$stage)
 
 # gamdata$age <- gamdata$ageclass
 # gamdata[which(gamdata$age == '8+'), 'age'] <- 10
@@ -72,18 +73,52 @@ for (i in 1:nrow(datagroup)) {
 }
 
 
-p <- ggplot(gamdata , aes(mdates, weight)) 
-p <- p + geom_point()
-p <- p + geom_line(data = pdat, aes(mdates, pred, col = 'red'), size = 1.5)
-p <- p + geom_point(data = datagroup, aes(mdates, mw, col = 'blue'), size = 1.5)
+gamdata$decade <- ifelse(gamdata$year < 1990, '1980s',
+                         ifelse(between(gamdata$year, 1990, 1999), '1990s',
+                                ifelse(between(gamdata$year, 2000, 2009), '2000s', '2010s')))
+
+mw <- gamdata %>%
+  group_by(decade, month, ageclass) %>%
+  summarize(mw = mean(weight))
+
+mw$mdates <- dmy(paste('15/', mw$month, '/2800'))
+for (i in 1:nrow(mw)) {
+  #if(!is.na(datagroup[i, 'dates'])) {
+  if(mw$month[i] > 2) {
+    mw$mdates[i] <- mw$mdates[i] - years(1)
+    # }
+  }
+}
+
+
+p <- ggplot(gamdata , aes(mdates, weight, colour = decade) ) 
+p <- p + geom_point(alpha = 0.3)
+p <- p + geom_line(data = mw, aes(mdates, mw, colour = decade) )
+#p <- p + geom_line(data = pdat, aes(mdates, pred), size = 1.5, col = 'red')
+#p <- p + geom_point(data = datagroup, aes(mdates, mw), size = 1.5, col = 'blue')
 #p <- p + geom_line(data = pdat, aes(mdates, pred12, col = 'blue'))
-p <- p + theme_bw() + theme(legend.position="none")
+#p <- p + theme_bw() + theme(legend.position="none")
 p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p <- p + scale_x_date(date_breaks = "1 months",labels = date_format("%b")) 
 p <- p + xlab("Month")
+p <- p + theme_bw() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank())
 p <- p + facet_wrap(~ageclass, ncol = 2)#, scales = "free_y")
 print(p)
+library(cowplot)
+save_plot("output/weight_gain_by_decade.pdf", p, base_height = 8, base_aspect_ratio = 1.3) # make room for figure legend)
 
+
+
+p <- ggplot(mw , aes(month, mw, colour = decade) ) 
+p <- p + geom_point()
+p <- p + geom_line()
+p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+#p <- p + scale_x_date(date_breaks = "1 months",labels = date_format("%b")) 
+p <- p + xlab("Month")
+p <- p + theme_bw() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank())
+p <- p + facet_wrap(~ageclass, ncol = 2)#, scales = "free_y")
+print(p)
+save_plot("output/weight_gain_by_decade_means.pdf", p, base_height = 8, base_aspect_ratio = 1.3) # make room for figure legend)
 
 data2 <- merge(data, pdat[,c('doy','ageclass','pred')], by=c('doy','ageclass'), all.x = T)
 data2 <- data2[!duplicated(data2$idsex),]

@@ -176,13 +176,13 @@ print(p)
 
 
 
-library(forecast)
-myar <- Arima(data$weight, order = c(0,0,300), include.drift = TRUE, xreg = data$ageclass)
-data$predw <- fitted(myar)
-
-qqnorm(myar$residuals)
-qqline(myar$residuals)
-acf(data$weight)
+# library(forecast)
+# myar <- Arima(data$weight, order = c(0,0,300), include.drift = TRUE, xreg = data$ageclass)
+# data$predw <- fitted(myar)
+# 
+# qqnorm(myar$residuals)
+# qqline(myar$residuals)
+# acf(data$weight)
 
 p <- ggplot(data , aes(as.POSIXct(mdates), weight, colour = sex)) 
 p <- p + geom_point(aes(as.POSIXct(data$mdates),data$predw, colour = data$sex))
@@ -193,3 +193,4 @@ p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p <- p + xlab("Date")
 p <- p + facet_wrap(~ageclass, ncol = 1, scales = "free_y")
 print(p)
+

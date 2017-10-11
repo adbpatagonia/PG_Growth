@@ -101,6 +101,19 @@ w <- w + scale_colour_discrete(name = "",
 w <- w + theme_set(theme_cowplot())
 save_plot("output/lw.png", w, base_aspect_ratio = 1.3, base_height = 6) # make room for figure legend)
 
+lw <- ggplot(adf, aes((ll), (lw), colour = as.factor(month)))
+lw <- lw + geom_point(alpha = 0.5)
+lw <- lw + geom_line(data = pdata, aes((ll), (lpw), colour = as.factor(month)), size = 1.5)
+lw <- lw + theme_bw()
+lw <- lw + labs(x = 'log(Length (cm))', y = 'log(Weight (kg))')
+lw <- lw + scale_colour_discrete(name = "",
+                               breaks = c("12", "1", "2"),
+                               labels = c("December", "January", "February"))
+lw <- lw + theme_set(theme_cowplot())
+save_plot("output/llw.png", lw, base_aspect_ratio = 1.3, base_height = 6) # make room for figure legend)
+
+
+
 
 ## visualize condition ----
 pregn <- 2:3
