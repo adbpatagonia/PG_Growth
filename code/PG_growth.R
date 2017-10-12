@@ -194,3 +194,4 @@ p <- p + xlab("Date")
 p <- p + facet_wrap(~ageclass, ncol = 1, scales = "free_y")
 print(p)
 
+save(data, file = 'Rdata/data.Rdata')

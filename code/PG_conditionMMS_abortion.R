@@ -359,4 +359,17 @@ ay <- ay + annotate("text", x = 1997, y = 0.58, label = "Abortion rate ~ betareg
 ay <- ay + annotate("segment", x = 1996, xend = 1996.8, y = 0.6, yend = 0.6, colour = "red")
 ay <- ay + annotate("segment", x = 1996, xend = 1996.8, y = 0.58, yend = 0.58, colour = "blue")
 
+ca <- ggplot(plotfecun, aes(meancond, abrate))
+ca <- ca + ylim(0, 0.6)
+ca <- ca + xlim(0.8, 1.2)
+ca <- ca + geom_point()
+ca <- ca + geom_linerange(data = plotfecun, aes(x = meancond, y = abrate, ymin = ablb, ymax = abub))
+ca <- ca + geom_line(data = plotfecun, aes(x = meancond, y = pred1), col = 'red')
+ca <- ca + geom_ribbon(data = plotfecun, aes(ymin = pred1lb, ymax = pred1ub), alpha = 0.2, fill = 'red')
+ca <- ca + labs(x = 'Relative condition', y = 'Abortion rate')
+ca <- ca + theme_set(theme_cowplot())
+ca
+
+
 save_plot("output/abortion-models.png", ay, base_aspect_ratio = 1, base_height = 4, base_width = 6) # make room for figure legend)
+save_plot("output/abortion-condition-gam.png", ca, base_aspect_ratio = 1, base_height = 4, base_width = 6) 
