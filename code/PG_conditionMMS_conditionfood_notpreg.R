@@ -7,6 +7,7 @@ library(cowplot)
 library(MuMIn)
 library(betareg)
 library(mgcv)
+library(RColorBrewer)
 
 ## read data ----
 setwd('D:/Buren_files/GitHub/PG_Growth/')
@@ -19,6 +20,7 @@ names(capelin) <- c('cohort_year', 'capbiomass')
 fecun <- read.csv('data/fecundity_2014-feb20.csv', header = T)
 
 load('Rdata/adf.Rdata')
+adf <- droplevels(subset(adf, preg == 'B'))
 
 ## lag 
 fecun$Capt1<-c(NA,fecun$Cap[1:(length(fecun$Cap)-1)])
@@ -135,24 +137,26 @@ mm$Em12lb <- mm$Em12 - 1.96 * se
 mm$Em12ub <- mm$Em12 + 1.96 * se
 
 
-mypalette <- c(brewer.pal(4,"Set1"))
+mypalette <- c(brewer.pal(5,"Set1"))
 
 
 ## plot condition ----
 ay <- ggplot(mm, aes(cohort_year, meancond))
 ay <- ay + geom_text(aes(x = cohort_year, y = 1.5, label = paste('n = ',ncond, sep = ''), angle = 90), size = 3, hjust = 0.5)
 # ay <- ay + geom_ribbon(data = mm, aes(ymin = Em5lb, ymax = Em5ub), alpha = 0.2, fill = mypalette[1])
-ay <- ay + geom_ribbon(data = mm, aes(ymin = Em12lb, ymax = Em12ub), alpha = 0.2, fill = mypalette[1])
-ay <- ay + geom_ribbon(data = mm, aes(ymin = Em7lb, ymax = Em7ub), alpha = 0.2, fill = mypalette[3])
-ay <- ay + geom_ribbon(data = mm, aes(ymin = Em8lb, ymax = Em8ub), alpha = 0.2, fill =  mypalette[2])
-ay <- ay + geom_point(aes(x = cohort_year, y = Em8), col =  mypalette[2], pch = 16, size = 0.6)
-ay <- ay + geom_point(aes(x = cohort_year, y = Em7), col = mypalette[3], pch = 16, size = .6)
-ay <- ay + geom_point(aes(x = cohort_year, y = Em12), col = mypalette[1], pch = 16, size = .6)
+#ay <- ay + geom_ribbon(data = mm, aes(ymin = Em12lb, ymax = Em12ub), alpha = 0.2, fill = mypalette[1])
+#ay <- ay + geom_ribbon(data = mm, aes(ymin = Em7lb, ymax = Em7ub), alpha = 0.2, fill = mypalette[3])
+#ay <- ay + geom_ribbon(data = mm, aes(ymin = Em8lb, ymax = Em8ub), alpha = 0.2, fill =  mypalette[2])
+# ay <- ay + geom_point(aes(x = cohort_year, y = Em8), col =  mypalette[2], pch = 16, size = 0.6)
+# ay <- ay + geom_point(aes(x = cohort_year, y = Em7), col = mypalette[3], pch = 16, size = .6)
+# ay <- ay + geom_point(aes(x = cohort_year, y = Em12), col = mypalette[1], pch = 16, size = .6)
 # ay <- ay + geom_point(aes(x = cohort_year, y = Em5), col = mypalette[1], pch = 16, size = 1.3)
 # ay <- ay + geom_line(aes(cohort_year, Em5), colour = mypalette[1])
- ay <- ay + geom_line(aes(cohort_year, Em12), colour = mypalette[1])
-ay <- ay + geom_line(aes(cohort_year, Em7), colour = mypalette[3])
-ay <- ay + geom_line(aes(cohort_year, Em8), colour =  mypalette[2])
+ ay <- ay + geom_line(aes(cohort_year, Em1), colour = mypalette[1])
+ay <- ay + geom_line(aes(cohort_year, Em2), colour = mypalette[2])
+ay <- ay + geom_line(aes(cohort_year, Em3), colour =  mypalette[3])
+ay <- ay + geom_line(aes(cohort_year, Em4), colour =  mypalette[4])
+ay <- ay + geom_line(aes(cohort_year, Em5), colour =  mypalette[5])
 ay <- ay + geom_point()
 ay <- ay + geom_linerange(aes(ymin = lcc, ymax = ucc))
 ay <- ay + theme_set(theme_cowplot())
@@ -168,29 +172,6 @@ ay <- ay + annotate("segment", x = 1996, xend = 1996.8, y = 0.75, yend = 0.75, c
 ay
 
 save_plot("output/condition-models.png", ay, base_aspect_ratio = 1, base_height = 4, base_width = 6) # make room for figure legend)
-
-
-ay <- ggplot(mm, aes(cohort_year, meancond))
-ay <- ay + geom_ribbon(data = mm, aes(ymin = Em12lb, ymax = Em12ub), alpha = 0.2, fill = mypalette[1])
-ay <- ay + geom_ribbon(data = mm, aes(ymin = Em8lb, ymax = Em8ub), alpha = 0.2, fill =  mypalette[2])
-ay <- ay + geom_point(aes(x = cohort_year, y = Em8), col =  mypalette[2], pch = 16, size = 0.6)
-ay <- ay + geom_point(aes(x = cohort_year, y = Em12), col = mypalette[1], pch = 16, size = .6)
-ay <- ay + geom_line(aes(cohort_year, Em12), colour = mypalette[1])
-ay <- ay + geom_line(aes(cohort_year, Em8), colour =  mypalette[2])
-ay <- ay + geom_point()
-ay <- ay + geom_linerange(aes(ymin = lcc, ymax = ucc), alpha = 0.25)
-ay <- ay + theme_set(theme_cowplot())
-ay <- ay + labs(x = 'Year', y = 'Condition')
-ay <- ay + annotate("text", x = 1997, y = 0.65, label = "condition ~ gam(smooth(Mid-winter ice)", hjust = 0, size = 2)
-ay <- ay + annotate("text", x = 1997, y = 0.6, label = "condition ~ gam(smooth(Mid-winter ice) + smooth(Capelin)", hjust = 0, size = 2)
-ay <- ay + annotate("segment", x = 1996, xend = 1996.8, y = 0.65, yend = 0.65, colour = mypalette[1])
-ay <- ay + annotate("segment", x = 1996, xend = 1996.8, y = 0.6, yend = 0.6, colour =  mypalette[2])
-ay <- ay + scale_y_continuous(breaks = seq(0.6, 1.6, 0.4), limits = c(0.6,1.5))
-ay <- ay + scale_x_continuous(breaks = seq(1995, 2015, 5), limits = c(1995, 2015))
-ay
-
-save_plot("output/toGarry/condition-models_white.png", ay, base_aspect_ratio = 1, base_height = 4, base_width = 6, bg = 'white') # make room for figure legend)
-save_plot("output/toGarry/condition-models_trans.png", ay, base_aspect_ratio = 1, base_height = 4, base_width = 6, bg = 'transparent') # make room for figure legend)
 
 
 ## use data points instead of mean condition ----

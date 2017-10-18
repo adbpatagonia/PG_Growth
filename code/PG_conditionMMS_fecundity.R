@@ -109,31 +109,30 @@ ca <- ca + theme_set(theme_cowplot())
 ca <- ca + labs(x = 'Relative condition', y = 'Abortion rate')
 ca
 
-# fit <- nls(abrate ~ 1-b1*log(meancond), data=fecun, start=list(b1=1))
-# xdat <- data.frame(meandcond = seq(min(na.omit(fecun$meancond)), max(na.omit(fecun$meancond)), length.out = 100))
-# xdat$Eabrate <- predict(fit, newdata = xdat)
 
 
-ff <- na.omit(fecun[,c('abrate','meancond'),])
-## check 1986!! ----
-## ff[which(ff$abrate == 0 & ff$meancond < 0.9), 'meancond'] <- NA
-ff$abrate[which(ff$abrate == 0)] <- 1e-16
-exponential.model <- lm(log(abrate) ~  meancond, data = ff)
+cf <- ggplot(fecun, aes(meancond, fecrate))
+cf <- cf + geom_point() 
+cf <- cf + geom_errorbar(data = fecun, aes(ymin = feclb, ymax = fecub), width = 0)
+cf <- cf + theme_set(theme_cowplot())
+cf <- cf + labs(x = 'Relative condition', y = 'Pregnancy rate')
+cf
+# save_plot("output/toGarry/cond-preg_trans.png", cf, base_aspect_ratio = 1.4,  base_width = 6, bg = "transparent") # make room for figure legend)
+# save_plot("output/toGarry/cond-preg_white.png", cf, base_aspect_ratio = 1.4,  base_width = 6, bg = "white") # make room for figure legend)
 
-exponential.models <- lm(abrate ~  exp(1-meancond), data = ff)
+cfdata <- na.omit(fecun[,c('fecrate', 'meancond')])
+betacf <- (betareg(fecrate ~ meancond, data = cfdata, link = 'log'))
+cfdata$predfecrate <- predict(betacf, type = 'response')
 
-condvalues <- data.frame(condvalues = seq(0, 1.5, length.out = 100))
-condvalues$Eabrate <- exp(predict(exponential.model,list(meancond = condvalues$condvalues)))
-condvalues$Eabrates <- (predict(exponential.models,list(meancond = condvalues$condvalues)))
-plot(ff$meancond, ff$abrate, pch = 16, xlim = c(0.8, 1.2))
-lines(condvalues$condvalues, condvalues$Eabrate,lwd = 2, col = "red")
-lines(condvalues$condvalues, condvalues$Eabrates,lwd = 2, col = "red")
-
-fecun$Eabrate <- exp(predict(exponential.model,list(meancond = fecun$meancond)))
-
-
-
-
+cf <- ggplot(fecun, aes(meancond, fecrate))
+cf <- cf + geom_point() 
+cf <- cf + geom_errorbar(data = fecun, aes(ymin = feclb, ymax = fecub), width = 0)
+cf <- cf + geom_line(data = cfdata, aes(meancond, predfecrate), col = 'red', size = 1.5)
+cf <- cf + theme_set(theme_cowplot())
+cf <- cf + labs(x = 'Relative condition', y = 'Pregnancy rate')
+cf
+save_plot("output/toGarry/cond-preg-beta_trans.png", cf, base_aspect_ratio = 1.4,  base_width = 6, bg = "transparent") # make room for figure legend)
+save_plot("output/toGarry/cond-preg-beta_white.png", cf, base_aspect_ratio = 1.4,  base_width = 6, bg = "white") # make room for figure legend)
 
 #### start betaregs ----
 fecun$Capt1 <- c(NA, fecun$Cap[1:(length(fecun$Cap) - 1)])
@@ -269,17 +268,130 @@ fecunice <- merge(fecun[,c('cohort_year', 'feclb', 'fecub')], fecunice)
 fecunice[which(fecunice$cohort_year < 1981), 'feclb'] <- NA
 fecunice[which(fecunice$cohort_year < 1981), 'fecub'] <- NA
 
+
+
+
+
+#B. Create X matrix 
+tmpfec <- fecunice[,c('fecrate','totpop','abrate')]
+tmpfec$abrate[is.na(tmpfec$abrate)] <- 0
+tmpfec$totpop[is.na(tmpfec$totpop)] <- 0
+Xmat <- model.matrix(~ totpop + abrate, data = tmpfec)
+#C. Calculate predicted values
+eta <-  Xmat %*% coef(bestmodel3)[1:length(coef(bestmodel3))-1]
+#D. Calculate standard errors (SE) for predicted values
+#SE of fitted values are given by the square root of
+#the diagonal elements of: X * cov(betas) * t(X)
+SE <- sqrt(  diag(Xmat %*%vcov(bestmodel3)[1:length(coef(bestmodel3))-1,1:length(coef(bestmodel3))-1] %*% t(Xmat))  )
+#Glue them all together
+#fecun$Pred <- fecun$Pred
+fecunice$pred3ub <- exp(eta + 1.96 * SE)[,1]
+fecunice$pred3lb <- exp(eta - 1.96 * SE)[,1]
+
+
+#B. Create X matrix 
+tmpfec <- fecunice[,c('fecrate','totpop','abrate','meancond')]
+tmpfec$abrate[is.na(tmpfec$abrate)] <- 0
+tmpfec$totpop[is.na(tmpfec$totpop)] <- 0
+tmpfec$meancond[is.na(tmpfec$meancond)] <- 0
+Xmat <- model.matrix(~ totpop + abrate + meancond, data = tmpfec)
+#C. Calculate predicted values
+eta <-  Xmat %*% coef(bestmodel4)[1:length(coef(bestmodel4))-1]
+#D. Calculate standard errors (SE) for predicted values
+#SE of fitted values are given by the square root of
+#the diagonal elements of: X * cov(betas) * t(X)
+SE <- sqrt(  diag(Xmat %*%vcov(bestmodel4)[1:length(coef(bestmodel4))-1,1:length(coef(bestmodel4))-1] %*% t(Xmat))  )
+#Glue them all together
+#fecun$Pred <- fecun$Pred
+fecunice$pred4ub <- exp(eta + 1.96 * SE)[,1]
+fecunice$pred4lb <- exp(eta - 1.96 * SE)[,1]
+
+
+
+#B. Create X matrix 
+tmpfec <- fecunice[,c('fecrate','meancond')]
+tmpfec$meancond[is.na(tmpfec$meancond)] <- 0
+Xmat <- model.matrix(~  meancond, data = tmpfec)
+#C. Calculate predicted values
+eta <-  Xmat %*% coef(bestmodel5)[1:length(coef(bestmodel5))-1]
+#D. Calculate standard errors (SE) for predicted values
+#SE of fitted values are given by the square root of
+#the diagonal elements of: X * cov(betas) * t(X)
+SE <- sqrt(  diag(Xmat %*%vcov(bestmodel5)[1:length(coef(bestmodel5))-1,1:length(coef(bestmodel5))-1] %*% t(Xmat))  )
+#Glue them all together
+#fecun$Pred <- fecun$Pred
+fecunice$pred5ub <- exp(eta + 1.96 * SE)[,1]
+fecunice$pred5lb <- exp(eta - 1.96 * SE)[,1]
+
+
+
+
+
+
 fy <- ggplot(fecunice, aes(cohort_year, fecrate))
 fy <- fy + geom_point()
 fy <- fy + geom_linerange(aes(ymin = feclb, ymax = fecub))
+fy <- fy + geom_point(aes(cohort_year, pred3), col = 'red', size = 2)
+fy <- fy + geom_point(aes(cohort_year, pred4), col = 'darkgreen', size = 2)
 fy <- fy + theme_set(theme_cowplot())
-fy <- fy + labs(x = 'Cohort year', y = 'Pregnancy rate')
-fy <- fy + geom_line(data = fecunice, aes(cohort_year, pred1), col = 'red', size = 1.5)
-fy <- fy + geom_line(data = fecunice, aes(cohort_year, pred5), col = 'blue', size = 1.5)
+fy <- fy + labs(x = 'Year', y = 'Pregnancy rate')
+fy <- fy + geom_line(data = fecunice, aes(cohort_year, pred3), col = 'red', size = 1.5)
 fy <- fy + geom_line(data = fecunice, aes(cohort_year, pred4), col = 'darkgreen', size = 1.5)
-fy <- fy + ylim(0, 1)
-fy <- fy + xlim(1955, 2015)
+fy <- fy + geom_ribbon(data = fecunice, aes(x = cohort_year, ymin = pred3lb, ymax = pred3ub), alpha = 0.2, fill = 'red')
+fy <- fy + geom_ribbon(data = fecunice, aes(x = cohort_year, ymin = pred4lb, ymax = pred4ub), alpha = 0.2, fill = 'darkgreen')
+fy <- fy + scale_y_continuous(breaks = seq(0, 1, 0.5), limits = c(0,1))
+fy <- fy + scale_x_continuous(breaks = seq(1980, 2015, 5), limits = c(1980, 2015))
+fy <- fy + annotate("text", x = 1976.5 + 5, y = 0.1, label = fec3lab, hjust = 0, size = 3)
+fy <- fy + annotate("segment", x = 1975 + 5, xend = 1976.3+5, y = 0.1, yend = 0.1, colour = 'red', size = 1.2)
+fy <- fy + annotate("text", x = 1976.5 + 5, y = 0.05, label = fec4lab, hjust = 0, size = 3)
+fy <- fy + annotate("segment", x = 1975 + 5, xend = 1976.3+5, y = 0.05, yend = 0.05, colour = 'darkgreen', size = 1.2)
 fy
+
+save_plot("output/preg-models_trans.png", fy, base_aspect_ratio = 1.4,  base_width = 6, bg = "transparent") # make room for figure legend)
+save_plot("output/preg-models_white.png", fy, base_aspect_ratio = 1.4,  base_width = 6, bg = "white") # make room for figure legend)
+
+fy <- ggplot(fecunice, aes(cohort_year, fecrate))
+fy <- fy + geom_point()
+fy <- fy + geom_linerange(aes(ymin = feclb, ymax = fecub))
+#fy <- fy + geom_point(aes(cohort_year, pred3), col = 'red', size = 2)
+fy <- fy + geom_point(aes(cohort_year, pred4), col = 'darkgreen', size = 2)
+fy <- fy + theme_set(theme_cowplot())
+fy <- fy + labs(x = 'Year', y = 'Pregnancy rate')
+#fy <- fy + geom_line(data = fecunice, aes(cohort_year, pred3), col = 'red', size = 1.5)
+fy <- fy + geom_line(data = fecunice, aes(cohort_year, pred4), col = 'darkgreen', size = 1.5)
+#fy <- fy + geom_ribbon(data = fecunice, aes(x = cohort_year, ymin = pred3lb, ymax = pred3ub), alpha = 0.2, fill = 'red')
+fy <- fy + geom_ribbon(data = fecunice, aes(x = cohort_year, ymin = pred4lb, ymax = pred4ub), alpha = 0.2, fill = 'darkgreen')
+fy <- fy + scale_y_continuous(breaks = seq(0, 1, 0.5), limits = c(0,1))
+fy <- fy + scale_x_continuous(breaks = seq(1980, 2015, 5), limits = c(1980, 2015))
+# fy <- fy + annotate("text", x = 1976.5 + 5, y = 0.1, label = fec3lab, hjust = 0, size = 3)
+# fy <- fy + annotate("segment", x = 1975 + 5, xend = 1976.3+5, y = 0.1, yend = 0.1, colour = 'red', size = 1.2)
+fy <- fy + annotate("text", x = 1976.5 + 5, y = 0.05, label = fec4lab, hjust = 0, size = 3)
+fy <- fy + annotate("segment", x = 1975 + 5, xend = 1976.3+5, y = 0.05, yend = 0.05, colour = 'darkgreen', size = 1.2)
+fy
+
+save_plot("output/toGarry/preg-condition_trans.png", fy, base_aspect_ratio = 1.4,  base_width = 6, bg = "transparent") # make room for figure legend)
+save_plot("output/toGarry/preg-condition_white.png", fy, base_aspect_ratio = 1.4,  base_width = 6, bg = "white") # make room for figure legend)
+
+fp <- subset(fecunice, cohort_year > 1980)
+
+fy <- ggplot(fp, aes(cohort_year, fecrate))
+fy <- fy + geom_point()
+fy <- fy + geom_linerange(aes(ymin = feclb, ymax = fecub))
+fy <- fy + geom_point(aes(cohort_year, pred5), col = 'orange', size = 2)
+fy <- fy + theme_set(theme_cowplot())
+fy <- fy + labs(x = 'Year', y = 'Pregnancy rate')
+fy <- fy + geom_line(data = fp, aes(cohort_year, pred5), col = 'orange', size = 1.5)
+fy <- fy + geom_ribbon(data = fp, aes(x = cohort_year, ymin = pred5lb, ymax = pred5ub), alpha = 0.2, fill = 'orange')
+fy <- fy + scale_y_continuous(breaks = seq(0, 1, 0.5), limits = c(0,1))
+fy <- fy + scale_x_continuous(breaks = seq(1980, 2015, 5), limits = c(1980, 2015))
+fy <- fy + annotate("text", x = 1976.5 + 5, y = 0.1, label = fec5lab, hjust = 0, size = 3)
+fy <- fy + annotate("segment", x = 1975 + 5, xend = 1976.3+5, y = 0.1, yend = 0.1, colour = 'orange', size = 1.2)
+fy
+
+save_plot("output/toGarry/preg-modelcondition_trans.png", fy, base_aspect_ratio = 1.4,  base_width = 6, bg = "transparent") # make room for figure legend)
+save_plot("output/toGarry/preg-modelcondition_white.png", fy, base_aspect_ratio = 1.4,  base_width = 6, bg = "white") # make room for figure legend)
+
+
 
 
 par(mfrow=c(1,1))
@@ -308,6 +420,7 @@ axis(1,at=c(2010,2015),labels=F,tck=-.01,col="black",col.ticks="#0000ff00")
 with(fecunice,lines(cohort_year,pred5,lwd=2,col=mycolours[5],type= 'o',pch=16))   
 with(fecunice,lines(cohort_year,fecrate,lty=3,type= 'o',pch=16))      
 legend(1950, 0.4,cex=0.6, legend=c(fec1lab,fec2lab,fec3lab, fec4lab, fec5lab),bty='n',col=mycolours,lty=1,lwd=2)
+
 
 
 

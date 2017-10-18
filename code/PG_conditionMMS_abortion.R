@@ -107,7 +107,8 @@ ca <- ca + geom_linerange(data = fecun, aes(x = meancond, y = abrate, ymin = abl
 ca <- ca + labs(x = 'Relative condition', y = 'Abortion rate')
 ca <- ca + theme_set(theme_cowplot())
 ca
-save_plot("output/abortion-condition-fit.png", ca, base_aspect_ratio = 1, base_height = 6) # make room for figure legend)
+save_plot("output/toGarry/abortion-condition-fit-white.png", ca, base_aspect_ratio = 1, base_width = 6, bg = 'white') # make room for figure legend)
+save_plot("output/toGarry/abortion-condition-fit-trans.png", ca, base_aspect_ratio = 1,  base_width = 6, bg = "transparent") # make room for figure legend)
 
 ca <- ggplot(fecun, aes(meancond, abrate))
 ca <- ca + ylim(0, 0.6)
@@ -117,7 +118,9 @@ ca <- ca + geom_linerange(data = fecun, aes(x = meancond, y = abrate, ymin = abl
 ca <- ca + labs(x = 'Relative condition', y = 'Abortion rate')
 ca <- ca + theme_set(theme_cowplot())
 ca
-save_plot("output/abortion-condition.png", ca, base_aspect_ratio = 1, base_height = 6) # make room for figure legend)
+# save_plot("output/toGarry/abortion-condition-white.png", ca, base_aspect_ratio = 1, base_width = 6, bg = 'white') # make room for figure legend)
+# save_plot("output/toGarry/abortion-condition-trans.png", ca, base_aspect_ratio = 1,  base_width = 6, bg = "transparent") # make room for figure legend)
+
 
 
 
@@ -125,7 +128,7 @@ with(mfecun, plot(meancond, abrate,pch=16,ylim=c(0,.6),xlab='Mean relative condi
 #with(mfecun,plotCI(x=meancond,y=abrate,ui=abub,li=ablb,type='p',lty=1,sfrac=0,pch=16,gap=0,cex=0.1,add=T)) 
 #   with(mfecun,lines(relcond,Eabs,col='red',lwd=2))
 # with(mfecun,lines(meancond[I],Ebetabs[I],col='red',lwd=2))  
-# with(mfecun,lines(meancond[I],Eabs[I],col='blue',lwd=2))  
+# with(mfecun,lines(meancond[I],Eabs[I],col='red',lwd=2))  
 
 
 
@@ -149,12 +152,12 @@ fecunice$labrate <- gtools::logit(fecunice$abrate + 0.0000001)
 
 pairs(c(fecunice[,c('ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1', 'meancond')]), #pch = 16, 
       upper.panel = points, lower.panel = panelcor,diag.panel=panel.hist)
-fecunicet1 <- na.omit(fecunice[,c('abrate','ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1','cohort_year', 'meancond')])
+fecunicet1 <- na.omit(fecunice[,c('abrate','ice.1y.jan','Capt1','cohort_year', 'meancond')])
 
 #Data exploration
 #Outliers
-MyVar <- c('abrate','ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1','meancond')
-MyXVar <- c('ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1','meancond')
+#MyVar <- c('abrate','ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1','meancond')
+#MyXVar <- c('ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1','meancond')
 #Mydotplot(fecunicet1[,MyVar])
 
 #Collinearity
@@ -269,6 +272,9 @@ allgammodelst1 <- lapply(Formulas,function(i)
 
 
 
+
+
+
 ## obtain statistics for all gam models, including the expression of each model    
 mst1gam <- data.frame(modelnum = as.numeric(1:nmodels))
 for (i in 1:nrow(mst1gam)) {
@@ -291,31 +297,71 @@ mst1gam <- mst1gam[order(mst1gam$AICc),]
 mst1gam[which(mst1gam$er < 10), c('model','deltaAICc','er', 'LH')]
 
 
-Cols <- c( names(fecunicet1))
-Cols <- unique(Cols[! Cols %in% c('cohort_year','weight','abrate')])
+
+
+
+
+
+
+## Fit GAMs by hand ----
+mg1 <- gam(abrate ~ s(meancond), data = fecunicet1)
+mg1 <- gam(abrate ~ s(meancond), data = fecunicet1)
+mg2 <- gam(abrate ~ s(meancond) + s(Capt1, k = 5), data = fecunicet1)
+mg3 <- gam(abrate ~ s(meancond) + s(ice.1y.jan, k = 5), data = fecunicet1)
+mg4 <- gam(abrate ~ s(meancond, k = 5) + s(Capt1, k = 5) + s(ice.1y.jan, k = 5), data = fecunicet1)
+mg5 <- gam(abrate ~ s(Capt1) + s(ice.1y.jan, k = 5), data = fecunicet1)
+mg6 <- gam(abrate ~ s(Capt1), data = fecunicet1)
+mg7 <- gam(abrate ~ s(ice.1y.jan), data = fecunicet1)
+
+## create table for GAMs by hand ----
+mgs <- list(mg1, mg2, mg3, mg4, mg5, mg6, mg7)
+mgam <- data.frame(modelnum = as.numeric(1:7), model = rep(NA,7), N = rep(NA,7), adjrsquared = rep(NA,7), AICc = rep(NA,7), LH = rep(NA,7))
+
+for (i in 1:7) {
+  mgam$model[i] <- as.character(mgs[[i]]$formula[3])
+  mgam$N[i] <-   dim(mgs[[i]]$model)[1]
+  mgam$adjrsquared[i] <- round(summary(mgs[[i]])$r.sq,4)
+  mgam$AICc[i] <- AICc(mgs[[i]])
+  mgam$LH[i] <- logLik(mgs[[i]])[1]
+}
+mgam$deltaAICc <- mgam$AICc - min(mgam$AICc)
+
+mgam$wi <- exp(-0.5*mgam$deltaAICc)/sum(exp(-0.5*mgam$deltaAICc))
+mgam$er <- max(mgam$wi)/mgam$wi
+mgam <- mgam[order(mgam$modelnum),]
+mgam <- mgam[order(mgam$AICc),]  
+
+mgam[which(mgam$er < 10), ]
+mst1[which(mgam$er < 10), ]
+
+
+Cols <- c( 'ice.1y.jan', 'Capt1', 'meancond')
+#Cols <- unique(Cols[! Cols %in% c('cohort_year','weight','abrate')])
 relimpgam <- data.frame(variable=as.character(rep(NA,length(Cols))), wij=as.numeric(rep(NA,length(Cols))), stringsAsFactors = F)
 for (i in 1:length(Cols)){
   relimpgam$variable[i] <- Cols[i]
-  relimpgam$wij[i] <- sum(mst1gam[grep(Cols[i],mst1gam$model),'wi'])
+  relimpgam$wij[i] <- sum(mgam[grep(Cols[i],mgam$model),'wi'])
 }
 relimpgam <- relimpgam[rev(order(relimpgam$wij)),]
 
+### plot fits ----
 bestmodel <- allgammodelst1[[mst1gam$modelnum[1]]]
-bestmodel2 <- allmodelst1[[mst1$modelnum[3]]]
-bestmodel2 <- betareg(abrate ~ Capt1 + ice.1y.jan, data = fecunicet1, link = 'loglog' )
+bestmodel2 <- allmodelst1[[mst1$modelnum[1]]]
+bestmodel3 <- allmodelst1[[mst1$modelnum[3]]]
+#bestmodel2 <- betareg(abrate ~ Capt1 + ice.1y.jan, data = fecunicet1, link = 'loglog' )
 
 
 fecun$pred1 <- predict(bestmodel,newdata=fecun,type='response')
 fecun$pred2 <- predict(bestmodel2,newdata=fecun,type='response')
-
+fecun$pred3 <- predict(bestmodel3,newdata=fecun,type='response')
 
 
 ## obtain CIs for predictions ----
 plotfecun <- subset(fecun,cohort_year > 1995 & cohort_year < 2012)
 ## for ice + capelin model
 # Create X matrix 
-tmpfec <- plotfecun[,c('abrate','Capt1','ice.1y.jan')]
-Xmat <- model.matrix(~ Capt1 + ice.1y.jan, data = tmpfec)
+tmpfec <- plotfecun[,c('abrate','ice.1y.jan','Capt1', 'meancond')]
+Xmat <- model.matrix(~ ice.1y.jan + Capt1 + meancond , data = tmpfec)
 # Calculate predicted values
 eta <-  Xmat %*% coef(bestmodel2)[1:length(coef(bestmodel2))-1]
 #Calculate standard errors (SE) for predicted values
@@ -325,8 +371,8 @@ SE <- sqrt(  diag(Xmat %*%vcov(bestmodel2)[1:length(coef(bestmodel2))-1,1:length
 #Glue them all together
 etaplus <- eta + 1.96 * SE
 etaminus <- eta - 1.96 * SE
-plotfecun$pred2ub <-  exp(-exp(-etaplus))
-plotfecun$pred2lb <-  exp(-exp(-etaminus))
+plotfecun$pred2ub <-  exp(-exp(-etaplus))[,1]
+plotfecun$pred2lb <-  exp(-exp(-etaminus))[,1]
 
 
 # ## for s(meancond) model
@@ -341,25 +387,34 @@ plotfecun[which(plotfecun$pred2lb < 0), 'pred2lb'] <- 0
 
 
 
-
+abbetreglab <-   expression(paste("Abortion rate ~ betareg(Capelin + Mid-winter ice + condition), R"[italic(p)]^2,"=",0.79))
+abgamlab <-   expression(paste("Abortion rate ~ gam(smooth(condition)), R"[italic(adj)]^2,"=",0.68))
 
 ay <- ggplot(plotfecun, aes(cohort_year, abrate))
-ay <- ay + geom_point()
-ay <- ay + geom_linerange(aes(ymin = ablb, ymax = abub))
 ay <- ay + theme_set(theme_cowplot())
 ay <- ay + labs(x = 'Year', y = 'Abortion rate')
-ay <- ay + geom_line(data = plotfecun, aes(x = cohort_year, y = pred1), col = 'red')
-ay <- ay + geom_line(data = plotfecun, aes(x = cohort_year, y = pred2), col = 'blue')
-ay <- ay + geom_point(data = plotfecun, aes(x = cohort_year, y = pred2), col = 'blue', pch = 16, size = 1.3)
-ay <- ay + geom_point(data = plotfecun, aes(x = cohort_year, y = pred1), col = 'red', pch = 16, size = 1.3)
-ay <- ay + geom_ribbon(data = plotfecun, aes(ymin = pred2lb, ymax = pred2ub), alpha = 0.2, fill = 'blue')
-ay <- ay + geom_ribbon(data = plotfecun, aes(ymin = pred1lb, ymax = pred1ub), alpha = 0.2, fill = 'red')
-ay <- ay + annotate("text", x = 1997, y = 0.6, label = "Abortion rate ~ gam(condition)", hjust = 0, size = 2.6)
-ay <- ay + annotate("text", x = 1997, y = 0.58, label = "Abortion rate ~ betareg(Capelin + January ice)", hjust = 0, size = 2.6)
-ay <- ay + annotate("segment", x = 1996, xend = 1996.8, y = 0.6, yend = 0.6, colour = "red")
-ay <- ay + annotate("segment", x = 1996, xend = 1996.8, y = 0.58, yend = 0.58, colour = "blue")
+ay <- ay + geom_line(data = plotfecun, aes(x = cohort_year, y = pred1), col = 'blue')
+ay <- ay + geom_line(data = plotfecun, aes(x = cohort_year, y = pred2), col = 'red')
+ay <- ay + geom_point(data = plotfecun, aes(x = cohort_year, y = pred2), col = 'red', pch = 16, size = 1.3)
+ay <- ay + geom_point(data = plotfecun, aes(x = cohort_year, y = pred1), col = 'blue', pch = 16, size = 1.3)
+ay <- ay + geom_ribbon(data = plotfecun, aes(ymin = pred2lb, ymax = pred2ub), alpha = 0.2, fill = 'red')
+ay <- ay + geom_ribbon(data = plotfecun, aes(ymin = pred1lb, ymax = pred1ub), alpha = 0.2, fill = 'blue')
+ay <- ay + ylim(0, 0.7)
+#ay <- ay + xlim(1996, 2012)
+ay <- ay + scale_x_continuous(breaks = seq(1996, 2012, 4), 
+                              limits = c(1996, 2012))
 
-ca <- ggplot(plotfecun, aes(meancond, abrate))
+ay <- ay + annotate("text", x = 2003.5, y = 0.65, label = abgamlab, hjust = 0, size = 2.5)
+ay <- ay + annotate("text", x = 2003.5, y = 0.7, label = abbetreglab, hjust = 0, size = 2.5)
+ay <- ay + annotate("segment", x = 2002.4, xend = 2003.3, y = 0.65, yend = 0.65, colour = "blue")
+ay <- ay + annotate("segment", x = 2002.4, xend = 2003.3, y = 0.7, yend = 0.7, colour = "red")
+ay <- ay + geom_point()
+ay <- ay + geom_linerange(data = plotfecun, aes(x = cohort_year, ymin = ablb, ymax = abub), alpha = 0.4)
+ay
+save_plot("output/toGarry/abortion-models_trans.png", ay, base_aspect_ratio = 1, base_height = 4, base_width = 7, bg = 'transparent') # make room for figure legend)
+save_plot("output/toGarry/abortion-models_white.png", ay, base_aspect_ratio = 1, base_height = 4, base_width = 7, bg = 'white') # make room for figure legend)
+
+sca <- ggplot(plotfecun, aes(meancond, abrate))
 ca <- ca + ylim(0, 0.6)
 ca <- ca + xlim(0.8, 1.2)
 ca <- ca + geom_point()
@@ -371,5 +426,5 @@ ca <- ca + theme_set(theme_cowplot())
 ca
 
 
-save_plot("output/abortion-models.png", ay, base_aspect_ratio = 1, base_height = 4, base_width = 6) # make room for figure legend)
+
 save_plot("output/abortion-condition-gam.png", ca, base_aspect_ratio = 1, base_height = 4, base_width = 6) 

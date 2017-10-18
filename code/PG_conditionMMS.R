@@ -99,7 +99,7 @@ w <- w + scale_colour_discrete(name = "",
                              breaks = c("12", "1", "2"),
                              labels = c("December", "January", "February"))
 w <- w + theme_set(theme_cowplot())
-save_plot("output/lw.png", w, base_aspect_ratio = 1.3, base_height = 6) # make room for figure legend)
+#save_plot("output/lw.png", w, base_aspect_ratio = 1.3, base_height = 6) # make room for figure legend)
 
 lw <- ggplot(adf, aes((ll), (lw), colour = as.factor(month)))
 lw <- lw + geom_point(alpha = 0.5)
@@ -110,7 +110,8 @@ lw <- lw + scale_colour_discrete(name = "",
                                breaks = c("12", "1", "2"),
                                labels = c("December", "January", "February"))
 lw <- lw + theme_set(theme_cowplot())
-save_plot("output/llw.png", lw, base_aspect_ratio = 1.3, base_height = 6) # make room for figure legend)
+#save_plot("output/llw.png", lw, base_aspect_ratio = 1.3, base_height = 6) # make room for figure legend)
+save_plot("output/toGarry/llw-trans.png", lw, base_aspect_ratio = 1.3, base_height = 6, bg = 'transparent' ) # make room for figure legend)
 
 
 
@@ -137,6 +138,21 @@ cp <- cp + facet_grid(preg ~ ., labeller=labeller(preg = labels))
 cp <- cp + theme_bw() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank())
 cp <- cp + theme(axis.text.x = element_text(angle = 270, hjust = 1, vjust =0 ))
 cp
-save_plot("output/condition.png", cp, base_width = 10, base_height = 6) # make room for figure legend)
+save_plot("output/toGarry/condition_white.png", cp, base_width = 10, base_height = 6, bg = 'white') # make room for figure legend)
 
-save(adf, file = 'Rdata/adf.Rdata')
+
+
+cp <- ggplot(adf[which(adf$cohyear < 2015),], aes( factor(cohyear), relcond))
+cp <- cp + geom_violin(trim = FALSE)
+cp <- cp + geom_jitter(position = position_jitter(0.1)) + stat_summary(fun.y = "mean", colour = "red", size = 2, geom = "point")
+cp <- cp + xlab("Year") + ylab('Relative condition')
+cp <- cp + geom_hline(yintercept = 1)
+cp <- cp + facet_grid(preg ~ ., labeller=labeller(preg = labels))
+cp <- cp + theme_bw() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),plot.background = element_rect(fill = "transparent", colour = NA) )
+cp <- cp + theme(axis.text.x = element_text(angle = 270, hjust = 1, vjust =0 ))
+cp
+save_plot("output/toGarry/condition_trans.png", cp, base_width = 10, base_height = 6, bg = 'transparent') # make room for figure legend)
+
+
+
+#save(adf, file = 'Rdata/adf.Rdata')
