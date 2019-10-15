@@ -7,6 +7,7 @@ library(cowplot)
 library(MuMIn)
 library(betareg)
 library(mgcv)
+library(ggplot2)
 
 ## read data ----
 setwd('D:/Buren_files/GitHub/PG_Growth/')
@@ -150,23 +151,23 @@ fecunice$abrate<-replace(fecunice$abrate,fecunice$abrate==0,1e-6)
 fecunice$labrate <- gtools::logit(fecunice$abrate + 0.0000001)
 
 
-pairs(c(fecunice[,c('ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1', 'meancond')]), #pch = 16, 
-      upper.panel = points, lower.panel = panelcor,diag.panel=panel.hist)
+# pairs(c(fecunice[,c('ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1', 'meancond')]), #pch = 16, 
+#       upper.panel = points, lower.panel = panelcor,diag.panel=panel.hist)
 fecunicet1 <- na.omit(fecunice[,c('abrate','ice.1y.jan','Capt1','cohort_year', 'meancond')])
 
 #Data exploration
 #Outliers
-#MyVar <- c('abrate','ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1','meancond')
-#MyXVar <- c('ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1','meancond')
+MyVar <- c('abrate','ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1','meancond')
+MyXVar <- c('ice.1y.jan','Capt1','ArcCodt1','Sandt1','abratet1','meancond')
 #Mydotplot(fecunicet1[,MyVar])
 
 #Collinearity
-pairs(fecunicet1[,MyVar], lower.panel = panel.cor)
+#pairs(fecunicet1[,MyVar], lower.panel = panel.cor)
 
-corvif(fecunicet1[ ,MyXVar])
+#corvif(fecunicet1[ ,MyXVar])
 
 
-VIF <-  corvif(fecunicet1[ ,MyXVar])
+#VIF <-  corvif(fecunicet1[ ,MyXVar])
 #setwd(outpath)
 #write.csv(VIF,'VIF_abrate_review2.csv', row.names=T) 
 #setwd(inpath)
@@ -280,8 +281,8 @@ mst1gam <- data.frame(modelnum = as.numeric(1:nmodels))
 for (i in 1:nrow(mst1gam)) {
   mst1gam$model[i] <- as.character(allgammodelst1[[i]]$formula[3])
   mst1gam$N[i] <-   dim(allgammodelst1[[i]]$model)[1]
-#  mst1gam$K[i] <- length(allgammodelst1[[i]]$coefficients$mean)
-#  mst1gam$pseudorsquared[i] <- round(allgammodelst1[[i]]$pseudo.r.squared,4)
+  mst1gam$K[i] <- length(summary(allgammodelst1[[i]])$p.coeff) + (summary(allgammodelst1[[i]])$m)
+  mst1gam$adjrsquared[i] <- round(summary(allgammodelst1[[i]])$r.sq,4)
   mst1gam$AICc[i] <- AICc(allgammodelst1[[i]])
   mst1gam$LH[i] <- logLik(allgammodelst1[[i]])[1]
 }
@@ -358,7 +359,7 @@ fecun$pred3 <- predict(bestmodel3,newdata=fecun,type='response')
 
 ## obtain CIs for predictions ----
 plotfecun <- subset(fecun,cohort_year > 1995 & cohort_year < 2012)
-## for ice + capelin model
+## for ice + capelin model + condition model
 # Create X matrix 
 tmpfec <- plotfecun[,c('abrate','ice.1y.jan','Capt1', 'meancond')]
 Xmat <- model.matrix(~ ice.1y.jan + Capt1 + meancond , data = tmpfec)
@@ -374,6 +375,22 @@ etaminus <- eta - 1.96 * SE
 plotfecun$pred2ub <-  exp(-exp(-etaplus))[,1]
 plotfecun$pred2lb <-  exp(-exp(-etaminus))[,1]
 
+## for ice + capelin model 
+# Create X matrix 
+tmpfec <- plotfecun[,c('abrate','ice.1y.jan','Capt1')]
+Xmat <- model.matrix(~ ice.1y.jan + Capt1  , data = tmpfec)
+# Calculate predicted values
+eta <-  Xmat %*% coef(bestmodel3)[1:length(coef(bestmodel3))-1]
+#Calculate standard errors (SE) for predicted values
+#SE of fitted values are given by the square root of
+#the diagonal elements of: X * cov(betas) * t(X)
+SE <- sqrt(  diag(Xmat %*%vcov(bestmodel3)[1:length(coef(bestmodel3))-1,1:length(coef(bestmodel3))-1] %*% t(Xmat))  )
+#Glue them all together
+etaplus <- eta + 1.96 * SE
+etaminus <- eta - 1.96 * SE
+plotfecun$pred3ub <-  exp(-exp(-etaplus))[,1]
+plotfecun$pred3lb <-  exp(-exp(-etaminus))[,1]
+
 
 # ## for s(meancond) model
 se <- predict( bestmodel , se = TRUE)$se.fit
@@ -388,26 +405,32 @@ plotfecun[which(plotfecun$pred2lb < 0), 'pred2lb'] <- 0
 
 
 abbetreglab <-   expression(paste("Abortion rate ~ betareg(Capelin + Mid-winter ice + condition), R"[italic(p)]^2,"=",0.79))
+abbetreglabstenson <-   expression(paste("Abortion rate ~ betareg(Capelin + Mid-winter ice), R"[italic(p)]^2,"=",0.69))
 abgamlab <-   expression(paste("Abortion rate ~ gam(smooth(condition)), R"[italic(adj)]^2,"=",0.68))
 
+cols <- brewer.pal(3, 'Set1')
 ay <- ggplot(plotfecun, aes(cohort_year, abrate))
 ay <- ay + theme_set(theme_cowplot())
 ay <- ay + labs(x = 'Year', y = 'Abortion rate')
-ay <- ay + geom_line(data = plotfecun, aes(x = cohort_year, y = pred1), col = 'blue')
-ay <- ay + geom_line(data = plotfecun, aes(x = cohort_year, y = pred2), col = 'red')
-ay <- ay + geom_point(data = plotfecun, aes(x = cohort_year, y = pred2), col = 'red', pch = 16, size = 1.3)
-ay <- ay + geom_point(data = plotfecun, aes(x = cohort_year, y = pred1), col = 'blue', pch = 16, size = 1.3)
-ay <- ay + geom_ribbon(data = plotfecun, aes(ymin = pred2lb, ymax = pred2ub), alpha = 0.2, fill = 'red')
-ay <- ay + geom_ribbon(data = plotfecun, aes(ymin = pred1lb, ymax = pred1ub), alpha = 0.2, fill = 'blue')
+ay <- ay + geom_line(data = plotfecun, aes(x = cohort_year, y = pred1), col = cols[2])
+ay <- ay + geom_line(data = plotfecun, aes(x = cohort_year, y = pred2), col = cols[3])
+ay <- ay + geom_line(data = plotfecun, aes(x = cohort_year, y = pred3), col = cols[1])
+# ay <- ay + geom_point(data = plotfecun, aes(x = cohort_year, y = pred2), col = 'red', pch = 16, size = 1.3)
+# ay <- ay + geom_point(data = plotfecun, aes(x = cohort_year, y = pred1), col = 'blue', pch = 16, size = 1.3)
+ay <- ay + geom_ribbon(data = plotfecun, aes(ymin = pred2lb, ymax = pred2ub), alpha = 0.2, fill = cols[3])
+ay <- ay + geom_ribbon(data = plotfecun, aes(ymin = pred1lb, ymax = pred1ub), alpha = 0.2, fill = cols[2])
+ay <- ay + geom_ribbon(data = plotfecun, aes(ymin = pred3lb, ymax = pred3ub), alpha = 0.2, fill = cols[1])
 ay <- ay + ylim(0, 0.7)
 #ay <- ay + xlim(1996, 2012)
 ay <- ay + scale_x_continuous(breaks = seq(1996, 2012, 4), 
                               limits = c(1996, 2012))
 
-ay <- ay + annotate("text", x = 2003.5, y = 0.65, label = abgamlab, hjust = 0, size = 2.5)
+ay <- ay + annotate("text", x = 2003.5, y = 0.62, label = abgamlab, hjust = 0, size = 2.5)
+ay <- ay + annotate("text", x = 2003.5, y = 0.66, label = abbetreglabstenson, hjust = 0, size = 2.5)
 ay <- ay + annotate("text", x = 2003.5, y = 0.7, label = abbetreglab, hjust = 0, size = 2.5)
-ay <- ay + annotate("segment", x = 2002.4, xend = 2003.3, y = 0.65, yend = 0.65, colour = "blue")
-ay <- ay + annotate("segment", x = 2002.4, xend = 2003.3, y = 0.7, yend = 0.7, colour = "red")
+ay <- ay + annotate("segment", x = 2002.4, xend = 2003.3, y = 0.62, yend = 0.62, colour = cols[2])
+ay <- ay + annotate("segment", x = 2002.4, xend = 2003.3, y = 0.66, yend = 0.66, colour = cols[1])
+ay <- ay + annotate("segment", x = 2002.4, xend = 2003.3, y = 0.7, yend = 0.7, colour = cols[3])
 ay <- ay + geom_point()
 ay <- ay + geom_linerange(data = plotfecun, aes(x = cohort_year, ymin = ablb, ymax = abub), alpha = 0.4)
 ay
@@ -428,3 +451,6 @@ ca
 
 
 save_plot("output/abortion-condition-gam.png", ca, base_aspect_ratio = 1, base_height = 4, base_width = 6) 
+
+write.csv(mst1, 'output/MStable.csv', row.names=FALSE)
+write.csv(mst1gam, 'output/MStablegam.csv', row.names=FALSE)
