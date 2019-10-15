@@ -49,3 +49,5 @@ Temporary Items
 code/\.Rhistory
 
 cache/
+
+.Rhistory
